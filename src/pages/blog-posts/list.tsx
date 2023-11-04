@@ -7,7 +7,6 @@ import {
   Button,
   TextField,
   Drawer,
-  Autocomplete,
   Grid,
   Box,
   Stack,
@@ -20,39 +19,45 @@ import {
 import TuneIcon from '@mui/icons-material/Tune';
 import HotelIcon from '@mui/icons-material/Hotel';
 
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
-import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers'
+import axios from 'axios';
+import Swal from 'sweetalert2';
 
 interface Hotel {
   id: number;
-  name: string;
-  address: {
-    country: string;
-    city: string;
-    street: string;
-    number: string;
-    location: string;
-    gps: string;
-  };
-  price: number;
-  stars: number;
-  beds: number;
-  roomImage: string;
+  imageUrl: string;
+  nom: string;
+  nombreEtoiles: number;
+  nombreLits: number;
+  prix: number;
+  typeChambre: string;
 }
 
 // Composant de la carte d'hôtel
 const HotelCard: React.FC<{ hotel: Hotel }> = ({ hotel }) => {
   const [openReservationDialog, setOpenReservationDialog] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    firstName: '',
-    cardNumber: '',
-    expirationDate: '',
-    cvv: '',
+    identifiantAgence: "Agence 1",
+    motDePasse: "motDePasse1",
+    idOffre: 2, // Replace with the appropriate ID if needed
+    nom: "John",
+    prenom: "Doe",
+    numeroCarte: "1234-5678-9012-3456",
+    cvv: 123, // Replace with the actual CVV
+    dateExpiration: "12/25", // Replace with the actual expiration date
+    dateDebut: "2023-05-15",
+    dateFin: "2023-05-20",
+    nombrePersonnes: 2,
+    prix: 250.0
   });
 
   const handleReserveClick = () => {
     setOpenReservationDialog(true);
+    setFormData({
+      ...formData,
+      idOffre: hotel.id
+    });
+
+
   };
 
   const handleCloseDialog = () => {
@@ -66,26 +71,50 @@ const HotelCard: React.FC<{ hotel: Hotel }> = ({ hotel }) => {
       [name]: value,
     });
   };
-  const handleDatePickerChange = (date: any) => {
-    setFormData({ ...formData, expirationDate: `${date['$M']+1}/${date['$y'].toString().slice(-2)}` });
-  };
+
+  const handleReservationSubmit = async () => {
+    try {
+      const response = await axios.post('http://127.0.0.1:3001/makeReservation', formData);
+
+      const responseData = response.data;
+      if (responseData && responseData.return) {
+        if(responseData.return === "Votre reservation est confirmé"){
+          Swal.fire(
+            'Succés!',
+            responseData.return,
+            'success'
+          )
+          setOpenReservationDialog(false);
+        } else if (responseData.return === "Reservation n'est pas effectué") {
+          Swal.fire(
+            'Erreur!',
+            responseData.return,
+            'error'
+          )
+          setOpenReservationDialog(false);
+        }
+      }
+    } catch (error) {
+      console.error('SOAP Request Error:', error);
+    }
+  }
 
   return (
     <div>
       <Card>
         <CardMedia
           component="img"
-          alt={hotel.name}
+          alt={hotel.nom}
           height="200"
-          image={hotel.roomImage}
-          title={hotel.name}
+          image={hotel.imageUrl}
+          title={hotel.nom}
         />
         <CardContent>
-          <Typography variant="h6">{hotel.name}</Typography>
-          <Typography>{hotel.address.number}, {hotel.address.street}, {hotel.address.city}, {hotel.address.country}</Typography>
-          <Typography>Prix: {hotel.price}</Typography>
-          <Typography>Étoiles: {hotel.stars}</Typography>
-          <Typography>Lits proposés: {hotel.beds}</Typography>
+          <Typography variant="h6">{hotel.nom}</Typography>
+          <Typography>Type: {hotel.typeChambre}</Typography>
+          <Typography>Prix: {hotel.prix}</Typography>
+          <Typography>Étoiles: {hotel.nombreEtoiles}</Typography>
+          <Typography>Lits proposés: {hotel.nombreLits}</Typography>
           <Button onClick={handleReserveClick} startIcon={<HotelIcon />}>Réserver</Button>
         </CardContent>
       </Card>
@@ -95,67 +124,113 @@ const HotelCard: React.FC<{ hotel: Hotel }> = ({ hotel }) => {
         <DialogTitle>Réservation d'hôtel</DialogTitle>
         <DialogContent>
           <Grid container spacing={1}>
-              <Grid item xs={6}>
-                <TextField
-                  label="Nom"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleFormChange}
-                  required={true}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  label="Prénom"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleFormChange}
-                  required={true}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={8}>
-                <TextField
-                  label="Card Number"
-                  name="cardNumber"
-                  value={formData.cardNumber}
-                  onChange={handleFormChange}
-                  type='number'
-                  required={true}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={4}>
-                <TextField
-                  label="CVV"
-                  name="cvv"
-                  value={formData.cvv}
-                  type='number'
-                  required={true}
-                  onChange={handleFormChange}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    label="Expiration Date (MM/YY)"
-                    openTo="month"
-                    format="MM/YY"
-                    views={["month", "year"]}
-                    value={formData.expirationDate}
-                    onChange={handleDatePickerChange}
-                  />
-                </LocalizationProvider>                
-              </Grid>
+            <Grid item xs={6}>
+              <TextField 
+                label="Agence partenaire" 
+                name="identifiantAgence" 
+                value={formData.identifiantAgence} 
+                onChange={handleFormChange}
+                fullWidth />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField 
+                label="Mot de passe" 
+                type='password' 
+                name="motDePasse"
+                value={formData.motDePasse}
+                onChange={handleFormChange}
+                fullWidth />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField 
+                label="Date d'arrivée" 
+                type='date' 
+                name="dateDebut"
+                value={formData.dateDebut}
+                onChange={handleFormChange}
+                InputLabelProps={{
+                  shrink: true
+                }} 
+                fullWidth />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField 
+                label="Date de départ" 
+                type='date' 
+                name="dateFin"
+                value={formData.dateFin}
+                onChange={handleFormChange}
+                InputLabelProps={{
+                  shrink: true
+                }} 
+                fullWidth />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField 
+                label="Nombre de personnes à héberger" 
+                type='number' 
+                name="nombrePersonnes"
+                value={formData.nombrePersonnes}
+                onChange={handleFormChange}
+                fullWidth />
+            </Grid>
+            <Grid item xs={6}/>
+            <Grid item xs={6}>
+              <TextField
+                label="Nom"
+                name="nom"
+                value={formData.nom}
+                onChange={handleFormChange}
+                required={true}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="Prénom"
+                name="prenom"
+                value={formData.prenom}
+                onChange={handleFormChange}
+                required={true}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={8}>
+              <TextField
+                label="Card Number"
+                name="numeroCarte"
+                value={formData.numeroCarte}
+                onChange={handleFormChange}
+                required={true}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
+                label="CVV"
+                name="cvv"
+                value={formData.cvv}
+                type='number'
+                required={true}
+                onChange={handleFormChange}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="Expiration Date (MM/YY)"
+                name='dateExpiration'
+                value={formData.dateExpiration}
+                onChange={handleFormChange}
+              />                
+            </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog} color="primary">
             Annuler
           </Button>
-          <Button color="primary">Valider la réservation</Button>
+          <Button color="primary" onClick={handleReservationSubmit}>Valider la réservation</Button>
         </DialogActions>
       </Dialog>
     </div>
@@ -163,8 +238,15 @@ const HotelCard: React.FC<{ hotel: Hotel }> = ({ hotel }) => {
 };
 
 // Composant de recherche et de filtrage
-const SearchAndFilter = () => {
+const SearchAndFilter = ({ setHotels }: { setHotels: any }) => {
   const [openFilterDrawer, setOpenFilterDrawer] = useState(false);
+  const [formData, setFormData] = useState({
+    identifiantAgence: "Agence 1", 
+    motDePasse: "motDePasse1" , 
+    dateDebut: "2023-05-15" , 
+    dateFin: "2023-05-20" , 
+    nombrePersonnes: 2
+  });
 
   const handleFilterClick = () => {
     setOpenFilterDrawer(true);
@@ -174,6 +256,27 @@ const SearchAndFilter = () => {
     setOpenFilterDrawer(false);
   };
 
+  const handleFormChange = (event: any) => {
+    const { name, value } = event.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
+
+  const handleFilterSubmit = async() => {
+    try {
+      const response = await axios.post('http://127.0.0.1:3001/consultDisponibilites', formData);
+
+      const responseData = response.data;
+      if (responseData && responseData.return) {
+        setHotels(responseData.return);
+      }
+    } catch (error) {
+      console.error('SOAP Request Error:', error);
+    }
+  };
+  
   return (
     <div>
       <Box display="flex" justifyContent="center" mb={2}>
@@ -188,41 +291,57 @@ const SearchAndFilter = () => {
       {/* Tiroir de filtrage */}
       <Drawer open={openFilterDrawer} onClose={handleCloseFilterDrawer}>
         <Box p={1}>
-          <TextField label="Agence partenaire" fullWidth />
+          <TextField 
+            label="Agence partenaire" 
+            name="identifiantAgence" 
+            value={formData.identifiantAgence} 
+            onChange={handleFormChange}
+            fullWidth />
         </Box>
         <Box p={1}>
-          <TextField label="Mot de passe" type='password' fullWidth />
+          <TextField 
+            label="Mot de passe" 
+            type='password' 
+            name="motDePasse"
+            value={formData.motDePasse}
+            onChange={handleFormChange}
+            fullWidth />
         </Box>
         <Box p={1}>
-          <TextField label="Ville de séjour" fullWidth />
-        </Box>
-        <Box p={1}>
-          <TextField label="Date d'arrivée" 
+          <TextField 
+            label="Date d'arrivée" 
             type='date' 
+            name="dateDebut"
+            value={formData.dateDebut}
+            onChange={handleFormChange}
             InputLabelProps={{
               shrink: true
             }} 
             fullWidth />
         </Box>
         <Box p={1}>
-          <TextField label="Date de départ" 
+          <TextField 
+            label="Date de départ" 
             type='date' 
+            name="dateFin"
+            value={formData.dateFin}
+            onChange={handleFormChange}
             InputLabelProps={{
               shrink: true
             }} 
             fullWidth />
         </Box>
         <Box p={1}>
-          <Autocomplete
-            options={hotelCategories}
-            renderInput={(params) => <TextField {...params} label="Catégorie d'hôtel" fullWidth />}
-          />
+          <TextField 
+            label="Nombre de personnes à héberger" 
+            type='number' 
+            name="nombrePersonnes"
+            value={formData.nombrePersonnes}
+            onChange={handleFormChange}
+            fullWidth />
         </Box>
         <Box p={1}>
-          <TextField label="Nombre de personnes à héberger" type='number' fullWidth />
-        </Box>
-        <Box p={1}>
-          <Button variant="contained" color="primary">
+          <Button variant="contained" color="primary" onClick={handleFilterSubmit} >
             Appliquer les filtres
           </Button>
         </Box>
@@ -231,80 +350,13 @@ const SearchAndFilter = () => {
   );
 };
 
-const hotelCategories = ['1 étoile', '2 étoiles', '3 étoiles', '4 étoiles', '5 étoiles'];
-
 // Composant principal
 export const HotelList = () => {
-  const hotels: Hotel[] = 
-  [
-    {
-      id: 1,
-      name: "Sample Hotel",
-      address: {
-        country: "Sample Country",
-        city: "Sample City",
-        street: "Sample Street",
-        number: "123",
-        location: "Sample Location",
-        gps: "123.456,789.012",
-      },
-      price: 100,
-      stars: 4,
-      beds: 2,
-      roomImage: "https://static5.depositphotos.com/1001540/504/i/950/depositphotos_5045505-stock-photo-luxurious-hotel.jpg",
-    },
-    {
-      id: 2,
-      name: "Sample Hotel",
-      address: {
-        country: "Sample Country",
-        city: "Sample City",
-        street: "Sample Street",
-        number: "123",
-        location: "Sample Location",
-        gps: "123.456,789.012",
-      },
-      price: 100,
-      stars: 4,
-      beds: 2,
-      roomImage: "https://static5.depositphotos.com/1001540/504/i/950/depositphotos_5045505-stock-photo-luxurious-hotel.jpg",
-    },
-    {
-      id: 3,
-      name: "Sample Hotel",
-      address: {
-        country: "Sample Country",
-        city: "Sample City",
-        street: "Sample Street",
-        number: "123",
-        location: "Sample Location",
-        gps: "123.456,789.012",
-      },
-      price: 100,
-      stars: 4,
-      beds: 2,
-      roomImage: "https://static5.depositphotos.com/1001540/504/i/950/depositphotos_5045505-stock-photo-luxurious-hotel.jpg",
-    },
-    {
-      id: 4,
-      name: "Sample Hotel",
-      address: {
-        country: "Sample Country",
-        city: "Sample City",
-        street: "Sample Street",
-        number: "123",
-        location: "Sample Location",
-        gps: "123.456,789.012",
-      },
-      price: 100,
-      stars: 4,
-      beds: 2,
-      roomImage: "https://static5.depositphotos.com/1001540/504/i/950/depositphotos_5045505-stock-photo-luxurious-hotel.jpg",
-    }
-  ]
+  const [hotels, setHotels] = useState<Hotel[]>([]); // State variable for hotels data
+
   return (
     <div>
-      <SearchAndFilter />
+      <SearchAndFilter setHotels={setHotels} />
       <Grid container spacing={2}>
         {hotels.map((hotel: Hotel) => (
           <Grid item xs={12} sm={6} md={3} key={hotel.id}>
@@ -315,6 +367,3 @@ export const HotelList = () => {
     </div>
   );
 };
-
-//export default HotelList;
-
