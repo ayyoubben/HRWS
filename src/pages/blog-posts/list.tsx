@@ -54,7 +54,8 @@ const HotelCard: React.FC<{ hotel: Hotel }> = ({ hotel }) => {
     setOpenReservationDialog(true);
     setFormData({
       ...formData,
-      idOffre: hotel.id
+      idOffre: hotel.id,
+      prix: hotel.prix
     });
 
 
